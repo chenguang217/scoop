@@ -49,8 +49,14 @@ function install_app($app, $architecture, $global, $suggested, $use_cache = $tru
     $original_dir = $dir # keep reference to real (not linked) directory
     $persist_dir = persistdir $app $global
 
+    if ($manifest.secureProblem) {
+        Start-Process powershell "Set-MpPreference -DisableRealtimeMonitoring 1" -Verb RunAs -WindowStyle hidden -wait
+    }
     $fname = Invoke-ScoopDownload $app $version $manifest $bucket $architecture $dir $use_cache $check_hash
     Invoke-HookScript -HookType 'pre_install' -Manifest $manifest -Arch $architecture
+    if ($manifest.secureProblem) {
+        Start-Process powershell "Set-MpPreference -DisableRealtimeMonitoring 0" -Verb RunAs -WindowStyle hidden -wait
+    }
 
     run_installer $fname $manifest $architecture $dir $global
     ensure_install_dir_not_in_path $dir $global
@@ -783,7 +789,13 @@ function run_uninstaller($manifest, $architecture, $dir) {
     $version = $manifest.version
     if($uninstaller.script) {
         write-output "Running uninstaller script..."
+        if ($manifest.secureProblem) {
+            Start-Process powershell "Set-MpPreference -DisableRealtimeMonitoring 1" -Verb RunAs -WindowStyle hidden -wait
+        }
         Invoke-Command ([scriptblock]::Create($uninstaller.script -join "`r`n"))
+        if ($manifest.secureProblem) {
+            Start-Process powershell "Set-MpPreference -DisableRealtimeMonitoring 0" -Verb RunAs -WindowStyle hidden -wait
+        }
         return
     }
 
